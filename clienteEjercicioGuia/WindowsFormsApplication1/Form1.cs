@@ -8,15 +8,18 @@ using System.Text;
 using System.Windows.Forms;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace WindowsFormsApplication1
 {
     public partial class Form1 : Form
     {
         Socket server;
+        Thread atender;
         public Form1()
         {
             InitializeComponent();
+            CheckForIllegalCrossThreadCalls = false; //Necesario para que los elementos de los formularios puedan ser accedidos desde threads diferentes a los que lo crearon.
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -49,6 +52,10 @@ namespace WindowsFormsApplication1
                 return;
             }
 
+            //Pongo en marcha el thread que atendera los mensajes del servidor.
+            ThreadStart ts = delegate { AtenderServidor(); };
+            atender = new Thread(ts);
+            atender.Start();
         }
 
         private void button2_Click(object sender, EventArgs e)
@@ -59,12 +66,6 @@ namespace WindowsFormsApplication1
                 // Enviamos al servidor el nombre tecleado
                 byte[] msg = System.Text.Encoding.ASCII.GetBytes(mensaje);
                 server.Send(msg);
-
-                //Recibimos la respuesta del servidor
-                byte[] msg2 = new byte[80];
-                server.Receive(msg2);
-                mensaje = Encoding.ASCII.GetString(msg2).Split ('\0')[0];
-                MessageBox.Show("La longitud de tu nombre es: " + mensaje);
             }
             else if (Bonito.Checked)
             {
@@ -72,18 +73,6 @@ namespace WindowsFormsApplication1
                 // Enviamos al servidor el nombre tecleado
                 byte[] msg = System.Text.Encoding.ASCII.GetBytes(mensaje);
                 server.Send(msg);
-
-                //Recibimos la respuesta del servidor
-                byte[] msg2 = new byte[80];
-                server.Receive(msg2);
-                mensaje = Encoding.ASCII.GetString(msg2).Split('\0')[0];
-
-
-                if (mensaje == "SI")
-                    MessageBox.Show("Tu nombre ES bonito.");
-                else
-                    MessageBox.Show("Tu nombre NO bonito. Lo siento.");
-
             }
             else
             {
@@ -92,12 +81,6 @@ namespace WindowsFormsApplication1
                 // Enviamos al servidor el nombre tecleado
                 byte[] msg = System.Text.Encoding.ASCII.GetBytes(mensaje);
                 server.Send(msg);
-
-                //Recibimos la respuesta del servidor
-                byte[] msg2 = new byte[80];
-                server.Receive(msg2);
-                mensaje = Encoding.ASCII.GetString(msg2).Split('\0')[0];
-                MessageBox.Show(mensaje);
             }
              
         
@@ -112,6 +95,7 @@ namespace WindowsFormsApplication1
             server.Send(msg);
 
             // Nos desconectamos
+            atender.Abort();
             this.BackColor = Color.Gray;
             server.Shutdown(SocketShutdown.Both);
             server.Close();
@@ -121,19 +105,42 @@ namespace WindowsFormsApplication1
 
         private void button4_Click(object sender, EventArgs e)
         {
-            //Pedir numero de servicios realizados
-            string mensaje = "4/";
 
-            byte[] msg = System.Text.Encoding.ASCII.GetBytes(mensaje);
-            server.Send(msg);
-
-            //Recibimos la respuesta del servidor
-            byte[] msg2 = new byte[80];
-            server.Receive(msg2);
-            mensaje = Encoding.ASCII.GetString(msg2).Split('\0')[0];
-            contLbl.Text= mensaje;
         }
 
+        private void AtenderServidor ()
+        {
+            while (true)
+            {
+                //Recibimos mensaje del servidor
+                byte[] msg2 = new byte[80];
+                server.Receive(msg2);
+                string[] trozos = Encoding.ASCII.GetString(msg2).Split('/');
+                int codigo = Convert.ToInt32(trozos[0]);
+                string mensaje = trozos[1].Split('\0')[0];
+
+                switch (codigo)
+                {
+                    case 1: //Respuesta a longitud
+                        MessageBox.Show("La longitud de tu nombre es: " + mensaje);
+                        break;
+                    case 2: //Respuesta a nombre bonito
+                        if (mensaje == "SI")
+                            MessageBox.Show("Tu nombre ES bonito.");
+                        else
+                            MessageBox.Show("Tu nombre NO bonito. Lo siento.");
+                        break;
+                    case 3: //Respuesta a si soy alto
+                        MessageBox.Show(mensaje);
+                        break;
+                    case 4: //Notificacion (cuantos servicios hay)
+                        contLbl.Text = mensaje;
+                        break;
+
+                }
+
+            }
+        }
      
     }
 }
