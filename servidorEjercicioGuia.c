@@ -61,21 +61,21 @@ void *AtenderCliente (void *socket)
 		if (codigo ==0) //petici?n de desconexi?n
 			terminar=1;
 		else if (codigo ==1) //piden la longitd del nombre
-			sprintf (respuesta,"%d",strlen (nombre));
+			sprintf (respuesta,"1/%d",strlen (nombre));
 		else if (codigo ==2)
 			// quieren saber si el nombre es bonito
 			if((nombre[0]=='M') || (nombre[0]=='S'))
-			strcpy (respuesta,"SI");
+			strcpy (respuesta,"2/SI");
 			else
-				strcpy (respuesta,"NO");
+				strcpy (respuesta,"2/NO");
 			else //quiere saber si es alto
 			{
 				p = strtok( NULL, "/");
 				float altura =  atof (p);
 				if (altura > 1.70)
-					sprintf (respuesta, "%s: eres alto",nombre);
+					sprintf (respuesta, "3/%s: eres alto",nombre);
 				else
-					sprintf (respuesta, "%s: eresbajo",nombre);
+					sprintf (respuesta, "3/%s: eresbajo",nombre);
 			}
 			
 			if (codigo !=0)
